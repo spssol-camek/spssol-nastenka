@@ -17,6 +17,17 @@ function renderPage() {
   document.querySelectorAll('nav a.active').forEach(a => a.setAttribute('aria-current', 'page'));
   renderFeed();
 }
+function monthGroups(posts) {
+  const groups = new Map();
+  const formatter = new Intl.DateTimeFormat('cs-CZ', { month: 'long', year: 'numeric' });
+  for (const post of posts) {
+    const date = new Date(post.publishedAt);
+    const key = `${date.getFullYear()}-${date.getMonth() + 1}`;
+    if (!groups.has(key)) groups.set(key, { key, label: formatter.format(date), posts: [] });
+    groups.get(key).posts.push(post);
+  }
+  return [...groups.values()].map(group => `<section class="month-group" aria-labelledby="month-${group.key}"><h3 class="month-heading" id="month-${group.key}">${escape(group.label)}</h3><div class="post-grid">${group.posts.map(p => postCard(p, { boards: content.boards })).join('')}</div></section>`).join('');
+}
 function renderFeed() {
   if (!document.querySelector('#feed')) return;
   const posts = filterPosts(content.posts, boardId(), query, tag, type);
@@ -24,7 +35,7 @@ function renderFeed() {
   document.querySelector('#result-count').textContent = posts.length;
   document.querySelector('#results-status').textContent = `${posts.length} nalezených materiálů`;
   document.querySelector('#tag-filter').innerHTML = ['', ...tags].map(t => `<button data-tag="${escape(t)}" class="${tag === t ? 'selected' : ''}" aria-pressed="${tag === t}">${escape(t || 'Všechny štítky')}</button>`).join('');
-  document.querySelector('#feed').innerHTML = posts.length ? `<div class="post-grid">${posts.map(p => postCard(p, { boards: content.boards })).join('')}</div>` : `<div class="empty-state">${icon('search', 30)}<h3>${query || tag || type ? 'Nebyly nalezeny žádné materiály' : 'Zatím nejsou vloženy žádné materiály'}</h3><p>${query || tag || type ? 'Zkuste jiné slovo nebo zrušte filtry.' : 'Až učitel přidá nový materiál, objeví se tady.'}</p>${query || tag || type ? '<button class="secondary-button" id="reset-filters">Zrušit filtry</button>' : ''}</div>`;
+  document.querySelector('#feed').innerHTML = posts.length ? monthGroups(posts) : `<div class="empty-state">${icon('search', 30)}<h3>${query || tag || type ? 'Nebyly nalezeny žádné materiály' : 'Zatím nejsou vloženy žádné materiály'}</h3><p>${query || tag || type ? 'Zkuste jiné slovo nebo zrušte filtry.' : 'Až učitel přidá nový materiál, objeví se tady.'}</p>${query || tag || type ? '<button class="secondary-button" id="reset-filters">Zrušit filtry</button>' : ''}</div>`;
 }
 app.addEventListener('input', e => { if (e.target.id === 'search') { query = e.target.value; renderFeed(); } });
 app.addEventListener('change', e => { if (e.target.id === 'type-filter') { type = e.target.value; renderFeed(); } });
