@@ -1,4 +1,4 @@
-import { detectProvider, safeUrl } from './content.js';
+import { detectProvider, safeUrl, isLocalAsset } from './content.js';
 export const escape = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const paths = {
   grid: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
@@ -27,16 +27,23 @@ const paths = {
   eye: '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>'
 };
 export function icon(name, size = 20) { return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name] || paths.link}</svg>`; }
-export function postCard(post, { tags = true, boards = [] } = {}) {
-  const provider = detectProvider(post.url);
+export function postCard(post, { tags = true, boards = [], showSubjects = true } = {}) {
+  const validPostUrl = safeUrl(post.url);
+  const validImage = safeUrl(post.image);
+  const localFile = isLocalAsset(post.url);
+  const originalProvider = detectProvider(post.url);
+  const assetBase = new URL('../', import.meta.url).pathname;
+  post = { ...post, url: isLocalAsset(post.url) ? assetBase + post.url : post.url, image: isLocalAsset(post.image) ? assetBase + post.image : post.image };
+  const provider = originalProvider;
   const image = post.image || provider.image;
   const title = escape(post.title);
   const subjects = post.boards.includes('*')
     ? '<span class="post-subject tone-purple">Všechny předměty</span>'
     : boards.filter(board => post.boards.includes(board.id)).map(board => `<span class="post-subject tone-${escape(board.color)}">${escape(board.title)} · ${escape(board.year)}</span>`).join('');
-  const subjectLabels = subjects ? `<div class="post-subjects" aria-label="Předměty">${subjects}</div>` : '';
-  const picture = image && safeUrl(image) && post.size !== 'small' ? `<div class="post-image"><img src="${escape(image)}" alt="" loading="lazy" referrerpolicy="no-referrer">${provider.videoId ? `<button class="play-button" data-play="${provider.videoId}" aria-label="Přehrát ${title}">▶</button><span class="video-label">VIDEO</span>` : ''}</div>` : '';
-  return `<article class="post-card size-${escape(post.size)} ${post.type === 'text' ? 'note-card' : ''}">${picture}<div class="post-body"><div class="post-meta"><span class="provider provider-${provider.icon}">${icon(provider.icon, 16)}${escape(provider.name)}</span><time datetime="${escape(post.publishedAt)}">${new Intl.DateTimeFormat('cs', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(post.publishedAt))}</time></div>${subjectLabels}<h3>${post.url && safeUrl(post.url) ? `<a href="${escape(post.url)}" target="_blank" rel="noopener noreferrer">${title}${icon('external', 18)}</a>` : title}</h3>${post.description ? `<p class="post-description">${escape(post.description)}</p>` : ''}<div class="post-tags">${post.tags.map(t => tags ? `<button data-tag="${escape(t)}">#${escape(t)}</button>` : `<span>#${escape(t)}</span>`).join('')}</div></div></article>`;
+  const subjectLabels = showSubjects && subjects ? `<div class="post-subjects" aria-label="Předměty">${subjects}</div>` : '';
+  let picture = image && (validImage || safeUrl(image)) && post.size !== 'small' ? `<div class="post-image"><img src="${escape(image)}" alt="" loading="lazy" referrerpolicy="no-referrer">${provider.videoId ? `<button class="play-button" data-play="${provider.videoId}" aria-label="Přehrát ${title}">▶</button><span class="video-label">VIDEO</span>` : ''}</div>` : '';
+  if (localFile && picture) picture = `<a href="${escape(post.url)}" target="_blank" rel="noopener noreferrer" aria-label="Otevřít obrázek: ${title}">${picture}</a>`;
+  return `<article class="post-card size-${escape(post.size)} ${post.type === 'text' ? 'note-card' : ''}">${picture}<div class="post-body"><div class="post-meta"><span class="provider provider-${provider.icon}">${icon(provider.icon, 16)}${escape(provider.name)}</span><time datetime="${escape(post.publishedAt)}">${new Intl.DateTimeFormat('cs', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(post.publishedAt))}</time></div>${subjectLabels}<h3>${post.url && validPostUrl ? `<a href="${escape(post.url)}" target="_blank" rel="noopener noreferrer">${title}${icon('external', 18)}</a>` : title}</h3>${post.description ? `<p class="post-description">${escape(post.description)}</p>` : ''}<div class="post-tags">${post.tags.map(t => tags ? `<button data-tag="${escape(t)}">#${escape(t)}</button>` : `<span>#${escape(t)}</span>`).join('')}</div></div></article>`;
 }
 export function bindMedia(root) {
   root.addEventListener('error', e => { if (e.target instanceof HTMLImageElement) e.target.closest('.post-image')?.classList.add('image-failed'); }, true);

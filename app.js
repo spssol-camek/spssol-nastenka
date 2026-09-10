@@ -26,7 +26,7 @@ function monthGroups(posts) {
     if (!groups.has(key)) groups.set(key, { key, label: formatter.format(date), posts: [] });
     groups.get(key).posts.push(post);
   }
-  return [...groups.values()].map(group => `<section class="month-group" aria-labelledby="month-${group.key}"><h3 class="month-heading" id="month-${group.key}">${escape(group.label)}</h3><div class="post-grid">${group.posts.map(p => postCard(p, { boards: content.boards })).join('')}</div></section>`).join('');
+  return [...groups.values()].map(group => `<section class="month-group" aria-labelledby="month-${group.key}"><h3 class="month-heading" id="month-${group.key}">${escape(group.label)}</h3><div class="post-grid">${group.posts.map(p => postCard(p, { boards: content.boards, showSubjects: !boardId() })).join('')}</div></section>`).join('');
 }
 function renderFeed() {
   if (!document.querySelector('#feed')) return;

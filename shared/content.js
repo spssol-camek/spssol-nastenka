@@ -1,6 +1,7 @@
 export const typeLabels = { link: 'Odkaz', video: 'Video', text: 'Poznámka', document: 'Dokument', repository: 'Repozitář', other: 'Ostatní' };
 export const colors = ['purple', 'blue', 'green', 'orange', 'pink'];
-export function safeUrl(value) { try { const u = new URL(value); return ['https:', 'http:'].includes(u.protocol) && !u.username && !u.password; } catch { return false; } }
+export const isLocalAsset = value => typeof value === 'string' && /^assets\/[a-f0-9-]{36}\.(jpg|png|pdf)$/.test(value);
+export function safeUrl(value) { if (isLocalAsset(value)) return true; try { const u = new URL(value); return ['https:', 'http:'].includes(u.protocol) && !u.username && !u.password; } catch { return false; } }
 const obj = v => typeof v === 'object' && v !== null && !Array.isArray(v);
 const str = (v, max = 1000) => typeof v === 'string' && v.length <= max;
 const list = v => Array.isArray(v) && v.length <= 100 && v.every(s => str(s, 150) && s.trim());
@@ -43,6 +44,7 @@ const providers = [
   { matches: u => /\.(pdf|docx?|pptx?|xlsx?)$/i.test(u.pathname), resolve: () => ({ name: 'Dokument', type: 'document', icon: 'document' }) }
 ];
 export function detectProvider(value) {
+  if (isLocalAsset(value)) return { name: value.endsWith('.pdf') ? 'PDF' : 'Obrázek', type: 'document', icon: 'document' };
   if (!value) return { name: 'Poznámka učitele', type: 'text', icon: 'text' };
   try { const url = new URL(value); if (!safeUrl(value)) throw new Error(); return providers.find(p => p.matches(url))?.resolve(url) || { name: url.hostname.replace(/^www\./, ''), type: 'link', icon: 'link', suggestedTitle: url.hostname.replace(/^www\./, '') }; }
   catch { return { name: 'Odkaz', type: 'link', icon: 'link' }; }
