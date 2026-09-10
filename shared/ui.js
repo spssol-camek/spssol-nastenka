@@ -27,11 +27,17 @@ const paths = {
   eye: '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>'
 };
 export function icon(name, size = 20) { return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name] || paths.link}</svg>`; }
+function descriptionHtml(text, expanded = false) {
+  if (!text) return '';
+  const html = `<p class="post-description">${escape(text)}</p>`;
+  if (expanded || (text.length <= 450 && text.split('\n').length <= 6)) return html;
+  return `<details class="post-text-details"><summary><span class="post-description post-text-preview">${escape(text)}</span><span class="text-expand-label">Rozbalit celý text <span aria-hidden="true">⌄</span></span><span class="text-collapse-label">Sbalit text <span aria-hidden="true">⌃</span></span></summary>${html}<button type="button" class="text-collapse-bottom" data-collapse-text>Sbalit text <span aria-hidden="true">⌃</span></button></details>`;
+}
 export function postCard(post, { tags = true, boards = [], showSubjects = true } = {}) {
   const validPostUrl = safeUrl(post.url);
   const validImage = safeUrl(post.image);
   const localFile = isLocalAsset(post.url);
-  const originalProvider = detectProvider(post.url);
+  const originalProvider = post.type === 'links' ? {name:'Seznam odkazů',icon:'link'} : detectProvider(post.url);
   const assetBase = new URL('../', import.meta.url).pathname;
   post = { ...post, url: isLocalAsset(post.url) ? assetBase + post.url : post.url, image: isLocalAsset(post.image) ? assetBase + post.image : post.image };
   const provider = originalProvider;
@@ -43,9 +49,16 @@ export function postCard(post, { tags = true, boards = [], showSubjects = true }
   const subjectLabels = showSubjects && subjects ? `<div class="post-subjects" aria-label="Předměty">${subjects}</div>` : '';
   let picture = image && (validImage || safeUrl(image)) && post.size !== 'small' ? `<div class="post-image"><img src="${escape(image)}" alt="" loading="lazy" referrerpolicy="no-referrer">${provider.videoId ? `<button class="play-button" data-play="${provider.videoId}" aria-label="Přehrát ${title}">▶</button><span class="video-label">VIDEO</span>` : ''}</div>` : '';
   if (localFile && picture) picture = `<a href="${escape(post.url)}" target="_blank" rel="noopener noreferrer" aria-label="Otevřít obrázek: ${title}">${picture}</a>`;
-  return `<article class="post-card size-${escape(post.size)} ${post.type === 'text' ? 'note-card' : ''}">${picture}<div class="post-body"><div class="post-meta"><span class="provider provider-${provider.icon}">${icon(provider.icon, 16)}${escape(provider.name)}</span><time datetime="${escape(post.publishedAt)}">${new Intl.DateTimeFormat('cs', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(post.publishedAt))}</time></div>${subjectLabels}<h3>${post.url && validPostUrl ? `<a href="${escape(post.url)}" target="_blank" rel="noopener noreferrer">${title}${icon('external', 18)}</a>` : title}</h3>${post.description ? `<p class="post-description">${escape(post.description)}</p>` : ''}<div class="post-tags">${post.tags.map(t => tags ? `<button data-tag="${escape(t)}">#${escape(t)}</button>` : `<span>#${escape(t)}</span>`).join('')}</div></div></article>`;
+  return `<article class="post-card size-${escape(post.size)} ${post.type === 'text' ? 'note-card' : ''}">${picture}<div class="post-body"><div class="post-meta"><span class="provider provider-${provider.icon}">${icon(provider.icon, 16)}${escape(provider.name)}</span><time datetime="${escape(post.publishedAt)}">${new Intl.DateTimeFormat('cs', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(post.publishedAt))}</time></div>${subjectLabels}<h3>${post.url && validPostUrl ? `<a href="${escape(post.url)}" target="_blank" rel="noopener noreferrer">${title}${icon('external', 18)}</a>` : title}</h3>${descriptionHtml(post.description, post.expanded)}${post.type === 'links' ? `<ul class="post-link-list">${(post.links || []).filter(l => safeUrl(l.url)).map(l => `<li><a href="${escape(l.url)}" target="_blank" rel="noopener noreferrer">${escape(l.title)} ${icon('external',14)}</a></li>`).join('')}</ul>` : ''}<div class="post-tags">${post.tags.map(t => tags ? `<button data-tag="${escape(t)}">#${escape(t)}</button>` : `<span>#${escape(t)}</span>`).join('')}</div></div></article>`;
 }
 export function bindMedia(root) {
+  root.addEventListener('click', e => {
+    const button = e.target.closest('[data-collapse-text]');
+    if (!button) return;
+    const details = button.closest('details');
+    details.open = false;
+    details.querySelector('summary').focus();
+  });
   root.addEventListener('error', e => { if (e.target instanceof HTMLImageElement) e.target.closest('.post-image')?.classList.add('image-failed'); }, true);
   root.addEventListener('click', e => {
     const button = e.target.closest('[data-play]');

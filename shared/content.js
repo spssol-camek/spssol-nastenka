@@ -1,4 +1,4 @@
-export const typeLabels = { link: 'Odkaz', video: 'Video', text: 'Poznámka', document: 'Dokument', repository: 'Repozitář', other: 'Ostatní' };
+export const typeLabels = { links: 'Seznam odkazů', link: 'Odkaz', video: 'Video', text: 'Poznámka', document: 'Dokument', repository: 'Repozitář', other: 'Ostatní' };
 export const colors = ['purple', 'blue', 'green', 'orange', 'pink'];
 export const isLocalAsset = value => typeof value === 'string' && /^assets\/[a-f0-9-]{36}\.(jpg|png|pdf)$/.test(value);
 export function safeUrl(value) { if (isLocalAsset(value)) return true; try { const u = new URL(value); return ['https:', 'http:'].includes(u.protocol) && !u.username && !u.password; } catch { return false; } }
@@ -16,9 +16,11 @@ export function validateContent(value) {
   });
   const postIds = new Set();
   const posts = value.posts.map(p => {
-    if (!obj(p) || !str(p.id, 100) || !/^[a-zA-Z0-9-]+$/.test(p.id) || postIds.has(p.id) || !str(p.title, 250) || !p.title.trim() || !str(p.description, 20000) || !Object.hasOwn(typeLabels, p.type) || !list(p.tags) || !list(p.boards) || !p.boards.length || p.boards.some(id => id !== '*' && !ids.has(id)) || (p.boards.includes('*') && p.boards.length !== 1) || !['small', 'medium', 'large'].includes(p.size) || typeof p.published !== 'boolean' || !date(p.publishedAt) || !date(p.createdAt) || (p.updatedAt !== undefined && !date(p.updatedAt)) || (p.url !== undefined && (!str(p.url, 4000) || !safeUrl(p.url))) || (p.image !== undefined && (!str(p.image, 4000) || !safeUrl(p.image))) || (p.type !== 'text' && !p.url) || (p.type === 'text' && p.url)) throw new Error('Neplatný příspěvek: zkontrolujte název, URL, datum a nástěnky.');
+    if (!obj(p) || !str(p.id, 100) || !/^[a-zA-Z0-9-]+$/.test(p.id) || postIds.has(p.id) || !str(p.title, 250) || !p.title.trim() || !str(p.description, 20000) || !Object.hasOwn(typeLabels, p.type) || !list(p.tags) || !list(p.boards) || !p.boards.length || p.boards.some(id => id !== '*' && !ids.has(id)) || (p.boards.includes('*') && p.boards.length !== 1) || !['small', 'medium', 'large'].includes(p.size) || typeof p.published !== 'boolean' || !date(p.publishedAt) || !date(p.createdAt) || (p.updatedAt !== undefined && !date(p.updatedAt)) || (p.url !== undefined && (!str(p.url, 4000) || !safeUrl(p.url))) || (p.image !== undefined && (!str(p.image, 4000) || !safeUrl(p.image))) || (!['text','links'].includes(p.type) && !p.url) || (p.type === 'text' && p.url)) throw new Error('Neplatný příspěvek: zkontrolujte název, URL, datum a nástěnky.');
+    if (p.type === 'links' && (p.url || !Array.isArray(p.links) || !p.links.length || p.links.length > 100 || p.links.some(l => !obj(l) || !str(l.title,250) || !l.title.trim() || !str(l.url,4000) || !safeUrl(l.url) || isLocalAsset(l.url)))) throw new Error('Doplňte název a platnou HTTP/HTTPS adresu každého odkazu (nejvýše 100).');
+    if (p.expanded !== undefined && typeof p.expanded !== 'boolean') throw new Error('Neplatná volba zobrazení textu.');
     postIds.add(p.id);
-    return { id: p.id, title: p.title.trim(), description: p.description, ...(p.url ? { url: p.url } : {}), ...(p.image ? { image: p.image } : {}), type: p.type, tags: [...new Set(p.tags)], boards: [...new Set(p.boards)], size: p.size, published: p.published, publishedAt: p.publishedAt, createdAt: p.createdAt, ...(p.updatedAt ? { updatedAt: p.updatedAt } : {}) };
+    return { id: p.id, title: p.title.trim(), description: p.description, ...(p.url ? { url: p.url } : {}), ...(p.image ? { image: p.image } : {}), ...(p.type === 'links' ? {links:p.links.map(l => ({title:l.title.trim(),url:l.url.trim()}))} : {}), ...(p.expanded === true ? {expanded:true} : {}), type: p.type, tags: [...new Set(p.tags)], boards: [...new Set(p.boards)], size: p.size, published: p.published, publishedAt: p.publishedAt, createdAt: p.createdAt, ...(p.updatedAt ? { updatedAt: p.updatedAt } : {}) };
   });
   return { boards, posts };
 }
@@ -51,5 +53,5 @@ export function detectProvider(value) {
 }
 export function filterPosts(posts, boardId, query = '', tag = '', type = '') {
   const terms = normalize(query).trim().split(/\s+/).filter(Boolean);
-  return boardPosts(posts, boardId).filter(p => (!tag || p.tags.includes(tag)) && (!type || p.type === type) && terms.every(term => normalize([p.title, p.description, ...p.tags, p.type, typeLabels[p.type], detectProvider(p.url).name].join(' ')).includes(term)));
+  return boardPosts(posts, boardId).filter(p => (!tag || p.tags.includes(tag)) && (!type || p.type === type) && terms.every(term => normalize([p.title, p.description, ...(p.links || []).flatMap(l => [l.title,l.url]), ...p.tags, p.type, typeLabels[p.type], detectProvider(p.url).name].join(' ')).includes(term)));
 }
