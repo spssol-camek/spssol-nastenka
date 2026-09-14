@@ -32,7 +32,8 @@ function descriptionHtml(text, expanded = false, markdown = false) {
   if (!text) return '';
   const html = markdown ? `<div class="post-markdown">${renderMarkdown(text)}</div>` : `<p class="post-description">${escape(text)}</p>`;
   if (expanded || (text.length <= 450 && text.split('\n').length <= 6)) return html;
-  return `<details class="post-text-details"><summary><span class="post-description post-text-preview">${escape(text)}</span><span class="text-expand-label">Rozbalit celý text <span aria-hidden="true">⌄</span></span><span class="text-collapse-label">Sbalit text <span aria-hidden="true">⌃</span></span></summary>${html}<button type="button" class="text-collapse-bottom" data-collapse-text>Sbalit text <span aria-hidden="true">⌃</span></button></details>`;
+  const preview = markdown ? `<div class="post-markdown post-text-preview markdown-preview" inert>${renderMarkdown(text)}</div>` : `<div class="post-description post-text-preview">${escape(text)}</div>`;
+  return `<div class="post-text-container">${preview}<details class="post-text-details"><summary><span class="text-expand-label">Rozbalit celý text <span aria-hidden="true">⌄</span></span><span class="text-collapse-label">Sbalit text <span aria-hidden="true">⌃</span></span></summary>${html}<button type="button" class="text-collapse-bottom" data-collapse-text>Sbalit text <span aria-hidden="true">⌃</span></button></details></div>`;
 }
 export function postCard(post, { tags = true, boards = [], showSubjects = true } = {}) {
   const validPostUrl = safeUrl(post.url);
