@@ -72,3 +72,33 @@ export function bindMedia(root) {
     wrap.replaceChildren(iframe);
   });
 }
+
+// Časy zvonění SPŠSOL; nezávislé na rozvrhu konkrétního předmětu.
+export const lessonTimes = [
+  ['7:05', '7:50'], ['8:00', '8:45'], ['8:50', '9:35'],
+  ['9:45', '10:30'], ['10:45', '11:30'], ['11:35', '12:20'],
+  ['12:25', '13:10'], ['13:15', '14:00'], ['14:05', '14:50'],
+  ['14:55', '15:40'], ['15:50', '16:35']
+];
+const schoolTime = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'Europe/Prague', weekday: 'short', hour: '2-digit',
+  minute: '2-digit', second: '2-digit', hourCycle: 'h23'
+});
+export function lessonClockState(now = new Date()) {
+  const parts = Object.fromEntries(schoolTime.formatToParts(now).map(p => [p.type, p.value]));
+  if (['Sat', 'Sun'].includes(parts.weekday)) return { label: 'Víkend', detail: 'Dnes se nezvoní', remaining: '' };
+  const seconds = Number(parts.hour) * 3600 + Number(parts.minute) * 60 + Number(parts.second);
+  const toSeconds = value => { const [h, m] = value.split(':').map(Number); return h * 3600 + m * 60; };
+  for (const [number, [start, end]] of lessonTimes.entries()) {
+    const begins = toSeconds(start), ends = toSeconds(end);
+    if (seconds >= ends) continue;
+    const active = seconds >= begins;
+    const left = (active ? ends : begins) - seconds;
+    return {
+      label: active ? `Právě běží ${number}. hodina` : number === 0 ? 'Před vyučováním' : 'Přestávka',
+      detail: active ? `${start}–${end} · do konce` : `Do ${number}. hodiny (${start})`,
+      remaining: `${String(Math.floor(left / 60)).padStart(2, '0')}:${String(left % 60).padStart(2, '0')}`
+    };
+  }
+  return { label: 'Po vyučování', detail: 'Dnešní zvonění skončilo', remaining: '' };
+}

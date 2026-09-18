@@ -20,3 +20,11 @@ footer{flex-wrap:wrap;gap:10px 20px}
 
 .post-text-container:has(>details[open])>.post-text-preview{display:none}
 .post-text-preview.markdown-preview{display:block;max-height:10.2em;overflow:hidden;-webkit-line-clamp:unset;margin-bottom:8px}
+
+.lesson-clock{margin-top:24px;padding:14px;border:1px solid #e6e2f4;border-radius:12px;background:#faf9ff;display:flex;flex-direction:column;gap:6px}
+.lesson-clock strong{font-size:12px;color:var(--accent)}
+.lesson-clock span{font-size:11px;color:var(--muted)}
+.lesson-clock b{font-size:28px;letter-spacing:1px;font-variant-numeric:tabular-nums}
+.lesson-clock b:empty{display:none}
+.sidebar:has(.lesson-clock){overflow-y:auto}
+.sidebar .lesson-clock+nav{margin-top:20px}
