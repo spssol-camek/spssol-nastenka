@@ -1,13 +1,21 @@
 import { boardPosts, filterPosts, typeLabels, validateContent } from './shared/content.js';
+import { activeExam, examCountdown, validateExams } from './shared/exams.js';
 import { escape, icon, postCard, bindMedia, lessonClockState } from './shared/ui.js';
 const base = new URL('./', import.meta.url).pathname;
 const app = document.querySelector('#app');
-let content;
+let content, exams = [], lockedExamId = '';
 let query = '', tag = '', type = '';
 const boardId = () => location.pathname.slice(base.length).match(/^boards\/([^/]+)\/?(?:index.html)?$/)?.[1];
 const boardUrl = id => `${base}boards/${id}/`;
 const link = (id, label, cls = '') => `<a class="${cls}" href="${id ? boardUrl(id) : base}" data-board="${id || ''}">${label}</a>`;
 function renderPage() {
+  const exam = activeExam(exams);
+  lockedExamId = exam?.id || '';
+  if (exam) {
+    document.title = 'Písemka probíhá · Nástěnka';
+    app.innerHTML = `<main class="exam-lock" aria-labelledby="exam-title"><div class="exam-lock-card"><span class="exam-lock-icon">${icon('clock', 36)}</span><p class="eyebrow">VÝUKOVÁ NÁSTĚNKA JE DOČASNĚ SKRYTÁ</p><h1 id="exam-title">${escape(exam.title)}</h1><p>Právě probíhá písemka. Materiály se automaticky znovu zobrazí po skončení hodiny.</p><strong data-exam-countdown aria-live="polite">${examCountdown(exam)}</strong><span>Do konce písemky</span></div></main>`;
+    return;
+  }
   const id = boardId();
   document.querySelector('.skip-link').href = `${location.pathname}#main`;
   const board = content.boards.find(b => b.id === id);
@@ -52,7 +60,13 @@ function toggleMenu(close = false) { const open = !close && !document.querySelec
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && content) toggleMenu(true); });
 window.addEventListener('popstate', () => { query = tag = type = ''; renderPage(); });
 bindMedia(app);
-try { const response = await fetch(`${base}content.json`); if (!response.ok) throw new Error(); content = validateContent(await response.json()); renderPage(); }
+try {
+  const [contentResponse, examsResponse] = await Promise.all([fetch(`${base}content.json`), fetch(`${base}exams.json`)]);
+  if (!contentResponse.ok || !examsResponse.ok) throw new Error();
+  content = validateContent(await contentResponse.json());
+  exams = validateExams(await examsResponse.json());
+  renderPage();
+}
 catch { app.innerHTML = '<main class="empty-state"><h1>Nástěnky se nepodařilo načíst</h1><p>Zkontrolujte připojení a zkuste to znovu.</p><button id="retry" class="primary-button">Zkusit znovu</button></main>'; document.querySelector('#retry').onclick = () => location.reload(); }
 
 function updateLessonClock() {
@@ -62,5 +76,17 @@ function updateLessonClock() {
     if (element && element.textContent !== value) element.textContent = value;
   }
 }
-setInterval(updateLessonClock, 1000);
-document.addEventListener('visibilitychange', updateLessonClock);
+function updateExamMode() {
+  const exam = activeExam(exams);
+  const id = exam?.id || '';
+  if (id !== lockedExamId) { renderPage(); return; }
+  if (exam) {
+    const element = document.querySelector('[data-exam-countdown]');
+    const remaining = examCountdown(exam);
+    if (element && element.textContent !== remaining) element.textContent = remaining;
+    return;
+  }
+  updateLessonClock();
+}
+setInterval(updateExamMode, 1000);
+document.addEventListener('visibilitychange', updateExamMode);

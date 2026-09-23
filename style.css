@@ -28,3 +28,13 @@ footer{flex-wrap:wrap;gap:10px 20px}
 .lesson-clock b:empty{display:none}
 .sidebar:has(.lesson-clock){overflow-y:auto}
 .sidebar .lesson-clock+nav{margin-top:20px}
+
+.exam-lock{min-height:100vh;max-width:none;margin:0;padding:28px;display:grid;place-items:center;background:radial-gradient(circle at 50% 0,#eeecfc 0,#f7f8fa 52%)}
+.exam-lock-card{width:min(100%,620px);padding:52px 36px;text-align:center;background:white;border:1px solid #ddd9fa;border-radius:20px;box-shadow:0 18px 50px #36306b12}
+.exam-lock-icon{display:grid;place-items:center;width:68px;height:68px;margin:0 auto 27px;border-radius:20px;color:var(--accent);background:#eeecfc}
+.exam-lock-card .eyebrow{margin-bottom:14px}
+.exam-lock-card h1{font-size:32px;margin-bottom:16px}
+.exam-lock-card p:not(.eyebrow){max-width:420px;margin:0 auto;color:var(--muted);font-size:14px;line-height:1.8}
+.exam-lock-card strong{display:block;margin:34px 0 7px;font-size:68px;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:2px;color:#302b86}
+.exam-lock-card>span:last-child{font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.3px}
+@media(max-width:500px){.exam-lock{padding:18px}.exam-lock-card{padding:40px 22px}.exam-lock-card h1{font-size:27px}.exam-lock-card strong{font-size:52px}}
