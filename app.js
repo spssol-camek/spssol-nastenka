@@ -61,7 +61,12 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && content) t
 window.addEventListener('popstate', () => { query = tag = type = ''; renderPage(); });
 bindMedia(app);
 try {
-  const [contentResponse, examsResponse] = await Promise.all([fetch(`${base}content.json`), fetch(`${base}exams.json`)]);
+  // Nová adresa při každém otevření stránky obchází i sdílenou cache Pages.
+  const revision = Date.now();
+  const [contentResponse, examsResponse] = await Promise.all([
+    fetch(`${base}content.json?t=${revision}`, { cache: 'no-store' }),
+    fetch(`${base}exams.json?t=${revision}`, { cache: 'no-store' })
+  ]);
   if (!contentResponse.ok || !examsResponse.ok) throw new Error();
   content = validateContent(await contentResponse.json());
   exams = validateExams(await examsResponse.json());
