@@ -8,18 +8,39 @@ let query = '', tag = '', type = '';
 const themeKey = 'spssol-theme';
 
 function getInitialTheme() {
-  const saved = localStorage.getItem(themeKey);
-  if (saved === 'light' || saved === 'dark') return saved;
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  try {
+    const saved = localStorage.getItem(themeKey);
+
+    if (saved === 'light' || saved === 'dark') {
+      return saved;
+    }
+  } catch (error) {
+    console.warn('Theme storage unavailable:', error);
+  }
+
+  return window.matchMedia?.('(prefers-color-scheme: dark)').matches
+    ? 'dark'
+    : 'light';
 }
 
 function setTheme(theme) {
   document.documentElement.dataset.theme = theme;
-  localStorage.setItem(themeKey, theme);
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#171923' : '#f7f8fa');
+
+  try {
+    localStorage.setItem(themeKey, theme);
+  } catch (error) {
+    console.warn('Theme preference could not be saved:', error);
+  }
+
+  document.querySelector('meta[name="theme-color"]')
+    ?.setAttribute('content', theme === 'dark' ? '#171923' : '#f7f8fa');
+
   document.querySelectorAll('[data-theme-toggle]').forEach(button => {
     button.innerHTML = icon(theme === 'dark' ? 'sun' : 'moon', 18);
-    button.setAttribute('aria-label', theme === 'dark' ? 'Přepnout světlý režim' : 'Přepnout tmavý režim');
+    button.setAttribute(
+      'aria-label',
+      theme === 'dark' ? 'Přepnout světlý režim' : 'Přepnout tmavý režim'
+    );
     button.setAttribute('aria-pressed', String(theme === 'dark'));
   });
 }
