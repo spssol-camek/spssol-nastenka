@@ -5,6 +5,68 @@ const base = new URL('./', import.meta.url).pathname;
 const app = document.querySelector('#app');
 let content, exams = [], lockedExamId = '';
 let query = '', tag = '', type = '';
+const themeKey = 'spssol-theme';
+
+function getInitialTheme() {
+  try {
+    const saved = localStorage.getItem(themeKey);
+
+    if (saved === 'light' || saved === 'dark') {
+      return saved;
+    }
+  } catch (error) {
+    console.warn('Theme storage unavailable:', error);
+  }
+
+  return window.matchMedia?.('(prefers-color-scheme: dark)').matches
+    ? 'dark'
+    : 'light';
+}
+
+function setTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+
+  try {
+    localStorage.setItem(themeKey, theme);
+  } catch (error) {
+    console.warn('Theme preference could not be saved:', error);
+  }
+
+  document.querySelector('meta[name="theme-color"]')
+    ?.setAttribute('content', theme === 'dark' ? '#171923' : '#f7f8fa');
+
+  document.querySelectorAll('[data-theme-toggle]').forEach(button => {
+    button.innerHTML = icon(theme === 'dark' ? 'sun' : 'moon', 18);
+    button.setAttribute(
+      'aria-label',
+      theme === 'dark' ? 'Přepnout světlý režim' : 'Přepnout tmavý režim'
+    );
+    button.setAttribute('aria-pressed', String(theme === 'dark'));
+  });
+}
+
+function ensureThemeControls() {
+  if (document.querySelector('[data-theme-toggle]')) {
+    setTheme(document.documentElement.dataset.theme || getInitialTheme());
+    return;
+  }
+  const createToggle = () => {
+    const button = document.createElement('button');
+    button.className = 'icon-button theme-toggle';
+    button.type = 'button';
+    button.dataset.themeToggle = '';
+    return button;
+  };
+  const desktopToggle = createToggle();
+  document.querySelector('.topbar')?.append(desktopToggle);
+  const mobileToggle = createToggle();
+  const mobileHeader = document.querySelector('.mobile-header');
+  const menuToggle = document.querySelector('#menu-toggle');
+  if (mobileHeader) mobileHeader.insertBefore(mobileToggle, menuToggle || null);
+  setTheme(document.documentElement.dataset.theme || getInitialTheme());
+}
+
+setTheme(getInitialTheme());
 const boardId = () => location.pathname.slice(base.length).match(/^boards\/([^/]+)\/?(?:index.html)?$/)?.[1];
 const boardUrl = id => `${base}boards/${id}/`;
 const link = (id, label, cls = '') => `<a class="${cls}" href="${id ? boardUrl(id) : base}" data-board="${id || ''}">${label}</a>`;
@@ -23,6 +85,7 @@ function renderPage() {
   for (const [selector, value] of [['meta[name="description"]', board?.description || 'Studijní materiály k vyučovaným předmětům.'], ['meta[property="og:title"]', document.title], ['meta[property="og:description"]', board?.description || 'Studijní materiály k vyučovaným předmětům.']]) document.querySelector(selector)?.setAttribute('content', value);
   app.innerHTML = `<div class="app-shell"><header class="mobile-header">${link('', `<img src="${base}favicon.svg" alt="">Nástěnka`, 'brand')}<button class="icon-button" id="menu-toggle" aria-label="Otevřít navigaci" aria-expanded="false">${icon('menu')}</button></header><button class="menu-backdrop" id="menu-backdrop" aria-label="Zavřít navigaci" hidden></button><aside class="sidebar">${link('', `<img src="${base}favicon.svg" alt=""><span>Nástěnka<small>SPŠSOL · VÝUKOVÉ MATERIÁLY</small></span>`, 'brand')}<section class="lesson-clock" aria-label="Školní zvonění"><strong data-clock-label></strong><span data-clock-detail></span><b data-clock-countdown></b></section><nav aria-label="Hlavní navigace">${link('', `${icon('grid')}Všechny materiály`, `nav-home ${!id ? 'active' : ''}`)}<div class="nav-caption">PŘEDMĚTY</div>${content.boards.map(b => link(b.id, `<span class="mini-icon tone-${b.color}">${icon(b.icon, 17)}</span><span>${escape(b.title)}<small>${escape(b.year)}</small></span>`, `nav-board ${id === b.id ? 'active' : ''}`)).join('')}</nav><div class="sidebar-bottom">${['127.0.0.1', 'localhost'].includes(location.hostname) ? '<a href="/editor/" class="editor-link">Otevřít editor ↗</a>' : ''}<span class="sidebar-copyright">SPŠSOL · Digitální nástěnka</span></div></aside><div class="main-shell"><div class="topbar"><span>Výuka <span class="crumb">/</span><strong>${board ? `${escape(board.title)} · ${escape(board.year)}` : 'Všechny materiály'}</strong></span></div><main id="main" tabindex="-1"><div class="page-heading"><div><p class="eyebrow">${board ? `${escape(board.year)} / ${escape(board.schoolYear)}` : 'VÝUKA'}</p><h1>${board ? escape(board.title) : 'Studijní materiály'}</h1><p class="lead">${escape(board?.description || 'Odkazy, dokumenty, videa a poznámky k vyučovaným předmětům.')}</p></div><span class="heading-icon tone-${board?.color || 'purple'}">${icon(board?.icon || 'book', 30)}</span></div>${id && !board ? '<div class="empty-state"><h2>Tato nástěnka není dostupná</h2><a href="' + base + '">Zpět na přehled</a></div>' : `<section class="feed-section" aria-labelledby="feed-heading"><div class="section-heading"><h2 id="feed-heading">${board ? 'Materiály na nástěnce' : 'Nejnovější příspěvky'} <span id="result-count"></span></h2><span>${icon('clock', 14)}Nejnovější nahoře</span></div><div class="search-row"><label class="search-field">${icon('search', 19)}<input id="search" type="search" aria-label="Hledat v materiálech" placeholder="${board ? 'Hledat na této nástěnce…' : 'Hledat ve všech materiálech…'}" value="${escape(query)}"></label><label class="filter-field">${icon('filter', 17)}<select id="type-filter" aria-label="Typ zdroje"><option value="">Všechny typy</option>${Object.entries(typeLabels).map(([key, label]) => `<option value="${key}" ${key === type ? 'selected' : ''}>${label}</option>`).join('')}</select></label></div><div class="tag-filter" id="tag-filter"></div><span class="sr-only" id="results-status" role="status"></span><div id="feed"></div></section>`}</main><footer>Studijní materiály<span>Mgr. Libor Čamek · SPŠSOL</span></footer></div></div>`;
   document.querySelectorAll('nav a.active').forEach(a => a.setAttribute('aria-current', 'page'));
+  ensureThemeControls();
   renderFeed();
   updateLessonClock();
 }
@@ -49,6 +112,10 @@ function renderFeed() {
 app.addEventListener('input', e => { if (e.target.id === 'search') { query = e.target.value; renderFeed(); } });
 app.addEventListener('change', e => { if (e.target.id === 'type-filter') { type = e.target.value; renderFeed(); } });
 app.addEventListener('click', e => {
+  if (e.target.closest('[data-theme-toggle]')) {
+    setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+    return;
+  }
   const nav = e.target.closest('[data-board]');
   if (nav && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey && e.button === 0) { e.preventDefault(); history.pushState({}, '', nav.href); query = tag = type = ''; renderPage(); document.querySelector('#main').focus({ preventScroll: true }); window.scrollTo(0, 0); return; }
   const tagButton = e.target.closest('[data-tag]');
